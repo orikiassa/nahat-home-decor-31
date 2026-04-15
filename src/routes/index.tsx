@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ProductCard } from "@/components/ProductCard";
-import { products } from "@/lib/products";
+import { useState, useEffect } from "react";
+import { storefrontApiRequest, PRODUCTS_QUERY, type ShopifyProduct } from "@/lib/shopify";
 import heroImage from "@/assets/hero-home.jpg";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -18,6 +20,25 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
+  const [products, setProducts] = useState<ShopifyProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const data = await storefrontApiRequest(PRODUCTS_QUERY, { first: 20 });
+        if (data?.data?.products?.edges) {
+          setProducts(data.data.products.edges);
+        }
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProducts();
+  }, []);
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
@@ -77,24 +98,32 @@ function HomePage() {
           <p className="mx-auto mt-3 max-w-md text-center text-sm text-muted-foreground">
             כל מוצר נבחר בקפידה כדי להביא סטייל ונוחות לבית שלך
           </p>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="mt-12 flex justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : products.length === 0 ? (
+            <div className="mt-12 text-center text-muted-foreground">
+              <p>לא נמצאו מוצרים</p>
+            </div>
+          ) : (
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {products.map((product) => (
+                <ProductCard key={product.node.id} product={product} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       {/* About Section */}
       <section className="bg-secondary/50 py-16 md:py-24">
         <div className="mx-auto max-w-2xl px-4 text-center">
-          <h2 className="font-display text-2xl font-bold text-foreground">
-            הסיפור שלנו
-          </h2>
+          <h2 className="font-display text-2xl font-bold text-foreground">הסיפור שלנו</h2>
           <p className="mt-6 leading-relaxed text-muted-foreground">
-            נחת Home נולדה מתוך אהבה לעיצוב פשוט וחם. אנחנו מאמינים שהבית צריך
-            להרגיש כמו חיבוק — מקום שמזמין מנוחה, השראה ושלווה. כל מוצר שאנחנו
-            בוחרים עובר קורציה קפדנית כדי שתקבלו רק את הטוב ביותר.
+            נחת Home נולדה מתוך אהבה לעיצוב פשוט וחם. אנחנו מאמינים שהבית צריך להרגיש כמו חיבוק —
+            מקום שמזמין מנוחה, השראה ושלווה. כל מוצר שאנחנו בוחרים עובר קורציה קפדנית כדי שתקבלו
+            רק את הטוב ביותר.
           </p>
         </div>
       </section>
