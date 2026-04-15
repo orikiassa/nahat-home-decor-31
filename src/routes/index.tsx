@@ -37,7 +37,7 @@ function HomePage() {
         <div className="relative mx-auto flex min-h-[70vh] max-w-6xl items-center px-4">
           <div className="max-w-lg">
             <h1 className="font-display text-4xl font-bold leading-tight text-background md:text-5xl lg:text-6xl">
-              הבית שלך מגיע להרגיש טוב
+              לבית שלך מגיע להרגיש טוב
             </h1>
             <p className="mt-4 text-lg text-background/80">
               מוצרי עיצוב נבחרים שמביאים נחת לכל חלל
