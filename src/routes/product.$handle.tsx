@@ -120,7 +120,9 @@ function ProductPage() {
               </div>
             )}
 
-            <p className="mt-6 leading-relaxed text-muted-foreground">{product.description}</p>
+            <p className="mt-6 leading-relaxed text-muted-foreground">
+              {product.description.split("Product Description")[0].trim()}
+            </p>
 
             <button
               onClick={handleAddToCart}
