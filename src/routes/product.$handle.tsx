@@ -16,6 +16,7 @@ function ProductPage() {
   const [product, setProduct] = useState<ShopifyProduct["node"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
+  const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const addItem = useCartStore((state) => state.addItem);
   const isLoading = useCartStore((state) => state.isLoading);
 
@@ -57,7 +58,8 @@ function ProductPage() {
   }
 
   const selectedVariant = product.variants.edges[selectedVariantIdx]?.node;
-  const imageUrl = product.images.edges[0]?.node.url;
+  const images = product.images.edges;
+  const selectedImage = images[selectedImageIdx]?.node ?? images[0]?.node;
 
   const handleAddToCart = async () => {
     if (!selectedVariant) return;
@@ -80,12 +82,40 @@ function ProductPage() {
           ← חזרה לחנות
         </Link>
         <div className="grid gap-10 md:grid-cols-2">
-          <div className="overflow-hidden rounded-lg">
-            {imageUrl ? (
-              <img src={imageUrl} alt={product.title} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex aspect-square items-center justify-center bg-muted text-muted-foreground">
-                אין תמונה
+          <div>
+            <div className="overflow-hidden rounded-lg">
+              {selectedImage ? (
+                <img
+                  src={selectedImage.url}
+                  alt={selectedImage.altText ?? product.title}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex aspect-square items-center justify-center bg-muted text-muted-foreground">
+                  אין תמונה
+                </div>
+              )}
+            </div>
+            {images.length > 1 && (
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+                {images.map((img, idx) => (
+                  <button
+                    key={img.node.url}
+                    onClick={() => setSelectedImageIdx(idx)}
+                    className={`h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border-2 transition-all ${
+                      idx === selectedImageIdx
+                        ? "border-accent"
+                        : "border-transparent opacity-70 hover:opacity-100"
+                    }`}
+                    aria-label={`תמונה ${idx + 1}`}
+                  >
+                    <img
+                      src={img.node.url}
+                      alt={img.node.altText ?? `${product.title} ${idx + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
               </div>
             )}
           </div>
