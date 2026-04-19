@@ -57,7 +57,8 @@ function ProductPage() {
   }
 
   const selectedVariant = product.variants.edges[selectedVariantIdx]?.node;
-  const imageUrl = product.images.edges[0]?.node.url;
+  const images = product.images.edges;
+  const selectedImage = images[selectedImageIdx]?.node ?? images[0]?.node;
 
   const handleAddToCart = async () => {
     if (!selectedVariant) return;
