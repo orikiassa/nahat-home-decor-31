@@ -422,7 +422,7 @@
       </div>
       <div class="tip" style="margin-top:10px;">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3Z"></path></svg>
-        <span>עם מפתח, Claude מזהה אוכל <b>מתמונה בלבד</b> או מטקסט חופשי — כולל קלוריות ואבות מזון. משיגים מפתח ב-<b>console.anthropic.com</b> ← API Keys. המפתח נשמר על המכשיר שלכם בלבד ולא נשלח לאף אחד מלבד Anthropic. בלי מפתח — זיהוי טקסט בסיסי בלבד.</span>
+        <span>עם מפתח, ה-AI מזהה אוכל <b>מתמונה בלבד</b> או מטקסט חופשי — כולל קלוריות ואבות מזון. שתי אפשרויות: <b>Google Gemini בחינם</b> — מפתח ב-aistudio.google.com (מתחיל ב-AIza), או <b>Claude</b> — מפתח ב-console.anthropic.com (מתחיל ב-sk-ant, בתשלום לפי שימוש). מדביקים כאן והאפליקציה מזהה לבד באיזה ספק מדובר. המפתח נשמר על המכשיר שלכם בלבד.</span>
       </div>
     </div>
 
@@ -785,9 +785,13 @@
       hello.className = "msg-bot";
       var h = new Date().getHours();
       var greet = h<11 ? "בוקר טוב ☀️" : h<17 ? "צהריים טובים 🌿" : "ערב טוב 🌙";
-      hello.textContent = aiEnabled()
-        ? greet+" מה אכלת? כתבו חופשי או פשוט צלמו את הצלחת — ואזהה לבד את הקלוריות ואבות המזון ✨"
-        : greet+" מה אכלת? כתבו חופשי — למשל «קפוצ'ינו וקרואסון שקדים» — או צרפו תמונה מהגלריה או מהמצלמה. (טיפ: הוסיפו מפתח AI בהגדרות לזיהוי אוטומטי מתמונה)";
+      if(aiEnabled()){
+        hello.textContent = greet+" מה אכלת? כתבו חופשי או פשוט צלמו את הצלחת — ואזהה לבד את הקלוריות ואבות המזון ✨";
+      } else if(hasBridge()){
+        hello.textContent = greet+" מה אכלת? כתבו חופשי — למשל «קפוצ'ינו וקרואסון שקדים» — ואזהה הכל לבד דרך Claude, חינם ✨ (תמונות יצורפו ליומן; לזיהוי מתוך התמונה עצמה צריך מפתח API בהגדרות)";
+      } else {
+        hello.textContent = greet+" מה אכלת? כתבו חופשי — למשל «קפוצ'ינו וקרואסון שקדים» — או צרפו תמונה מהגלריה או מהמצלמה. (טיפ: הוסיפו מפתח AI בהגדרות לזיהוי אוטומטי מתמונה)";
+      }
       box.appendChild(hello);
     }
 
@@ -950,7 +954,70 @@
 
   function aiEnabled(){ return !!(S.apiKey && S.apiKey.trim()); }
 
+  /* Google keys start with "AIza", Anthropic keys with "sk-ant" — auto-detect provider */
+  var GEMINI_MODEL = "gemini-2.5-flash";
+  function providerOf(){ return /^AIza/.test((S.apiKey||"").trim()) ? "gemini" : "anthropic"; }
+
+  function analyzeWithGemini(text, photoDataUrl){
+    var parts = [];
+    if(photoDataUrl){
+      parts.push({ inlineData:{ mimeType:"image/jpeg", data: photoDataUrl.split(",")[1] } });
+    }
+    parts.push({ text: text ? "מה שאכלתי: "+text : "זהה את האוכל שבתמונה והערך את הערכים התזונתיים." });
+    return fetch("https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODEL+":generateContent?key="+encodeURIComponent(S.apiKey.trim()), {
+      method:"POST",
+      headers:{ "content-type":"application/json" },
+      body: JSON.stringify({
+        systemInstruction:{ parts:[{ text: AI_SYSTEM + ' החזר אך ורק JSON תקין במבנה: {"items":[{"name":"...","unit":"...","qty":1,"kcal":0,"protein_g":0,"carbs_g":0,"fat_g":0,"emoji":"🍽️"}],"comment":"..."} בלי שום טקסט נוסף.' }] },
+        contents:[{ role:"user", parts: parts }],
+        generationConfig:{ responseMimeType:"application/json", maxOutputTokens: 2048 }
+      })
+    }).then(function(res){
+      if(!res.ok){
+        var err = new Error("api_error_"+res.status);
+        err.status = res.status;
+        throw err;
+      }
+      return res.json();
+    }).then(function(data){
+      var txt = "";
+      try{ txt = data.candidates[0].content.parts.map(function(p){ return p.text || ""; }).join(""); }catch(e){}
+      var m = String(txt).match(/\{[\s\S]*\}/);
+      if(!m) throw new Error("parse");
+      var parsed = JSON.parse(m[0]);
+      if(!parsed || !Array.isArray(parsed.items)) throw new Error("parse");
+      return parsed;
+    });
+  }
+
+  /* Free path: when running as a claude.ai Artifact, window.claude.complete
+     answers via the viewer's Claude subscription — no API key needed (text only). */
+  function hasBridge(){
+    try{ return !!(window.claude && typeof window.claude.complete === "function"); }
+    catch(e){ return false; }
+  }
+
+  function analyzeViaBridge(text){
+    var prompt = AI_SYSTEM +
+      "\n\nהחזר אך ורק JSON תקין, בלי גדרות קוד ובלי שום טקסט נוסף, במבנה הבא בדיוק:\n" +
+      '{"items":[{"name":"שם בעברית","unit":"מנה","qty":1,"kcal":0,"protein_g":0,"carbs_g":0,"fat_g":0,"emoji":"🍽️"}],"comment":"משפט קצר"}' +
+      "\n\nמה שאכלתי: " + text;
+    return window.claude.complete(prompt).then(function(raw){
+      var m = String(raw).match(/\{[\s\S]*\}/);
+      if(!m) throw new Error("parse");
+      var parsed = JSON.parse(m[0]);
+      if(!parsed || !Array.isArray(parsed.items)) throw new Error("parse");
+      return parsed;
+    });
+  }
+
   function analyzeWithAI(text, photoDataUrl){
+    return providerOf() === "gemini"
+      ? analyzeWithGemini(text, photoDataUrl)
+      : analyzeWithClaudeApi(text, photoDataUrl);
+  }
+
+  function analyzeWithClaudeApi(text, photoDataUrl){
     var content = [];
     if(photoDataUrl){
       content.push({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data: photoDataUrl.split(",")[1] } });
@@ -1050,8 +1117,8 @@
   function handleAIFailure(err, key, text, attachPhoto){
     var ts = Date.now();
     var msg;
-    if(err && err.status === 401) msg = "מפתח ה-API לא תקין ❌ בדקו אותו בהגדרות (גלגל השיניים למעלה).";
-    else if(err && err.status === 429) msg = "יותר מדי בקשות ל-AI כרגע — נסו שוב עוד רגע.";
+    if(err && (err.status === 401 || err.status === 403 || err.status === 400)) msg = "מפתח ה-API לא תקין או נדחה ❌ בדקו אותו בהגדרות (גלגל השיניים למעלה).";
+    else if(err && err.status === 429) msg = "הגעתם למכסת הבקשות של הספק — נסו שוב עוד רגע (במסלול החינמי של Gemini יש מגבלה לדקה).";
     else if(err && err.status >= 500) msg = "השרת של Claude עמוס כרגע — נסו שוב עוד רגע.";
     else if(err && err.message === "refusal") msg = "ה-AI סירב לנתח את הבקשה הזו. נסו לנסח אחרת.";
     else if(err instanceof TypeError) msg = "אין גישת רשת ל-AI מהדף הזה 🌐 (בגרסה שרצה בקישור של Claude הרשת חסומה — צריך לפתוח את האפליקציה מכתובת האתר שלכם). עוברת למצב לא מקוון:";
@@ -1088,24 +1155,36 @@
     updateSendState();
     saveState(); renderHero(); renderChat(true);
 
-    if(aiEnabled()){
+    function handleAIResult(result){
+      hideTyping();
+      var ts = Date.now();
+      if(!result.items.length){
+        pushMsg(key, { k:"b", t: result.comment || "לא זיהיתי שם אוכל 🤔", ts:ts });
+      } else {
+        addAIItems(key, result.items, attachPhoto);
+        pushMsg(key, { k:"b", t:(result.comment || "נרשם ✨") + remainingTail(), ts:Date.now() });
+      }
+      saveState(); renderHero(); renderChat(true); renderProgress();
+    }
+    function runApi(){
       showTyping();
-      analyzeWithAI(text, attachPhoto).then(function(result){
-        hideTyping();
-        var ts = Date.now();
-        if(!result.items.length){
-          pushMsg(key, { k:"b", t: result.comment || "לא זיהיתי שם אוכל 🤔", ts:ts });
-        } else {
-          addAIItems(key, result.items, attachPhoto);
-          pushMsg(key, { k:"b", t:(result.comment || "נרשם ✨") + remainingTail(), ts:Date.now() });
-        }
-        saveState(); renderHero(); renderChat(true); renderProgress();
-      }).catch(function(err){
+      analyzeWithAI(text, attachPhoto).then(handleAIResult).catch(function(err){
         hideTyping();
         handleAIFailure(err, key, text, attachPhoto);
       });
+    }
+
+    /* Routing: free subscription bridge for text; API (vision) for photos; local as fallback */
+    if(text && hasBridge() && !(attachPhoto && aiEnabled())){
+      showTyping();
+      analyzeViaBridge(text).then(handleAIResult).catch(function(err){
+        hideTyping();
+        if(aiEnabled()) runApi();
+        else handleAIFailure(err, key, text, attachPhoto);
+      });
       return;
     }
+    if(aiEnabled()){ runApi(); return; }
 
     handleLocal(key, text, attachPhoto, now);
   });
@@ -1340,10 +1419,15 @@
   document.getElementById("settingsBtn").addEventListener("click", function(){ fillSettings(); openSheet("settings"); });
   function updateAiStatus(){
     var el = document.getElementById("aiStatus");
-    el.textContent = aiEnabled()
-      ? "✅ זיהוי חכם פעיל — תמונות וטקסט חופשי"
-      : "לא מוגדר — זיהוי טקסט בסיסי בלבד";
-    el.classList.toggle("on", aiEnabled());
+    var provName = providerOf() === "gemini" ? "Google Gemini (חינם)" : "Claude";
+    if(aiEnabled()){
+      el.textContent = "✅ זיהוי חכם פעיל דרך "+provName+" — תמונות וטקסט חופשי";
+    } else if(hasBridge()){
+      el.textContent = "✅ פעיל חינם דרך המנוי של Claude (טקסט; לזיהוי תמונות צריך מפתח)";
+    } else {
+      el.textContent = "לא מוגדר — זיהוי טקסט בסיסי בלבד";
+    }
+    el.classList.toggle("on", aiEnabled() || hasBridge());
   }
   document.getElementById("apiKeyInput").addEventListener("change", function(){
     S.apiKey = this.value.trim();
