@@ -6,12 +6,12 @@ export const Route = createFileRoute("/wedding")({
   component: WeddingPage,
   head: () => ({
     meta: [
-      { title: "נועה & דניאל — הזמנה לחתונה" },
+      { title: "יותם & סולל — הזמנה לחתונה" },
       {
         name: "description",
         content: "אנו מתכבדים להזמינכם לחגוג עמנו את יום נישואינו — יום חמישי, 20.8.2026",
       },
-      { property: "og:title", content: "נועה & דניאל — הזמנה לחתונה" },
+      { property: "og:title", content: "יותם & סולל — הזמנה לחתונה" },
       {
         property: "og:description",
         content: "אנו מתכבדים להזמינכם לחגוג עמנו את יום נישואינו",
@@ -29,15 +29,15 @@ export const Route = createFileRoute("/wedding")({
 /* ---------- Event constants ---------- */
 
 const WEDDING_DATE = new Date("2026-08-20T19:00:00+03:00");
-const VENUE_NAME = "אחוזת הדרים";
-const VENUE_ADDRESS = "דרך הפרדסים 1, ראשון לציון";
+const VENUE_NAME = "אולמי אלה";
+const VENUE_ADDRESS = "נס ציונה";
 const VENUE_QUERY = encodeURIComponent(`${VENUE_NAME}, ${VENUE_ADDRESS}`);
 const WAZE_URL = `https://waze.com/ul?q=${VENUE_QUERY}&navigate=yes`;
 const MAPS_URL = `https://maps.google.com/?q=${VENUE_QUERY}`;
 const GOOGLE_CALENDAR_URL =
   "https://calendar.google.com/calendar/render?action=TEMPLATE" +
   "&text=" +
-  encodeURIComponent("החתונה של נועה ודניאל 💍") +
+  encodeURIComponent("החתונה של יותם וסולל 💍") +
   "&dates=20260820T190000/20260821T010000&ctz=Asia/Jerusalem" +
   "&details=" +
   encodeURIComponent("קבלת פנים 19:00 · חופה 20:00 · חוגגים עד אור הבוקר") +
@@ -47,13 +47,13 @@ const GOOGLE_CALENDAR_URL =
 const ICS_CONTENT = [
   "BEGIN:VCALENDAR",
   "VERSION:2.0",
-  "PRODID:-//Noa & Daniel Wedding//HE",
+  "PRODID:-//Yotam & Solel Wedding//HE",
   "BEGIN:VEVENT",
-  "UID:noa-daniel-20260820@wedding",
+  "UID:yotam-solel-20260820@wedding",
   "DTSTAMP:20260701T000000Z",
   "DTSTART:20260820T160000Z",
   "DTEND:20260820T220000Z",
-  "SUMMARY:החתונה של נועה ודניאל 💍",
+  "SUMMARY:החתונה של יותם וסולל 💍",
   `LOCATION:${VENUE_NAME}\\, ${VENUE_ADDRESS}`,
   "DESCRIPTION:קבלת פנים 19:00 · חופה 20:00",
   "END:VEVENT",
@@ -416,9 +416,9 @@ function WeddingPage() {
           className="wed-hero-item wed-serif mt-6 text-5xl font-medium leading-tight md:text-7xl"
           style={{ animationDelay: "0.5s" }}
         >
-          נועה{" "}
+          יותם{" "}
           <span className="wed-script align-middle text-4xl text-[#c1a361] md:text-6xl">&</span>{" "}
-          דניאל
+          סולל
         </h1>
 
         <p
@@ -473,8 +473,8 @@ function WeddingPage() {
           </Reveal>
           <Reveal delay={150}>
             <p className="mt-8 text-lg leading-relaxed text-[#8a7649]">
-              הכל התחיל לפני חמש שנים, בערב קיץ אחד, כשנועה הזמינה קפה ודניאל קיבל בטעות את הכוס
-              שלה. מאז — אלפי כוסות קפה, שלוש דירות שכורות, טיול גדול אחד בדרום אמריקה וכלב אחד בשם
+              הכל התחיל לפני חמש שנים, בערב קיץ אחד, כשיותם הזמין קפה וסולל קיבל בטעות את הכוס שלו.
+              מאז — אלפי כוסות קפה, שלוש דירות שכורות, טיול גדול אחד בדרום אמריקה וכלב אחד בשם
               צ׳יפס. עכשיו הגיע הרגע להרים כוסית (לא של קפה) — ואנחנו רוצים אתכם לצידנו.
             </p>
           </Reveal>
@@ -566,7 +566,7 @@ function WeddingPage() {
               <span className="text-[#d9c49a]">|</span>
               <a
                 href={ICS_HREF}
-                download="noa-daniel-wedding.ics"
+                download="yotam-solel-wedding.ics"
                 className="text-[#a8863f] underline-offset-4 hover:underline"
               >
                 הורידו קובץ יומן (ICS)
@@ -600,7 +600,7 @@ function WeddingPage() {
       <footer className="px-4 pb-16 pt-10 text-center">
         <Reveal>
           <p className="wed-script text-3xl text-[#c1a361]" dir="ltr">
-            Noa &amp; Daniel
+            Yotam &amp; Solel
           </p>
           <p className="mt-3 text-sm text-[#a08c5f]">מחכים לכם באהבה · 20.8.2026 · {VENUE_NAME}</p>
         </Reveal>
