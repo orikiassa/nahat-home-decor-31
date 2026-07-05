@@ -13,9 +13,9 @@
 <style>
   /* ============ Tokens ============ */
   :root{
-    --bg-base:#FFF6F1;
-    --blob-a:rgba(255,190,168,.55); --blob-b:rgba(255,197,215,.5); --blob-c:rgba(255,228,176,.45);
-    --glass:rgba(255,255,255,.62); --glass-strong:rgba(255,255,255,.88); --glass-border:rgba(255,255,255,.65);
+    --bg-base:#FFFFFF;
+    --blob-a:rgba(255,210,199,.55); --blob-b:rgba(255,197,215,.28); --blob-c:rgba(255,228,176,.2);
+    --glass:rgba(255,255,255,.7); --glass-strong:rgba(255,255,255,.92); --glass-border:rgba(230,220,214,.7);
     --ink:#3A2620; --ink-2:#8A6F63; --ink-3:#B79E92;
     --cal:#E2472F; --cal-soft:rgba(226,71,47,.1);
     --protein:#D6456B; --carbs:#C77B12; --fat:#1F9468;
@@ -32,8 +32,8 @@
   }
   @media (prefers-color-scheme:dark){
     :root{
-      --bg-base:#201216;
-      --blob-a:rgba(180,72,52,.28); --blob-b:rgba(168,58,96,.24); --blob-c:rgba(160,110,32,.18);
+      --bg-base:#15100E;
+      --blob-a:rgba(150,68,52,.32); --blob-b:rgba(140,54,86,.16); --blob-c:rgba(140,96,32,.12);
       --glass:rgba(255,255,255,.055); --glass-strong:rgba(48,33,32,.92); --glass-border:rgba(255,255,255,.09);
       --ink:#F5E9E2; --ink-2:#C4A99C; --ink-3:#8A7268;
       --cal:#FF7A63; --cal-soft:rgba(255,122,99,.14);
@@ -51,8 +51,8 @@
     }
   }
   :root[data-theme="dark"] , #app[data-app-theme="dark"]{
-    --bg-base:#201216;
-    --blob-a:rgba(180,72,52,.28); --blob-b:rgba(168,58,96,.24); --blob-c:rgba(160,110,32,.18);
+    --bg-base:#15100E;
+    --blob-a:rgba(150,68,52,.32); --blob-b:rgba(140,54,86,.16); --blob-c:rgba(140,96,32,.12);
     --glass:rgba(255,255,255,.055); --glass-strong:rgba(48,33,32,.92); --glass-border:rgba(255,255,255,.09);
     --ink:#F5E9E2; --ink-2:#C4A99C; --ink-3:#8A7268;
     --cal:#FF7A63; --cal-soft:rgba(255,122,99,.14);
@@ -69,9 +69,9 @@
     color-scheme:dark;
   }
   :root[data-theme="light"] , #app[data-app-theme="light"]{
-    --bg-base:#FFF6F1;
-    --blob-a:rgba(255,190,168,.55); --blob-b:rgba(255,197,215,.5); --blob-c:rgba(255,228,176,.45);
-    --glass:rgba(255,255,255,.62); --glass-strong:rgba(255,255,255,.88); --glass-border:rgba(255,255,255,.65);
+    --bg-base:#FFFFFF;
+    --blob-a:rgba(255,210,199,.55); --blob-b:rgba(255,197,215,.28); --blob-c:rgba(255,228,176,.2);
+    --glass:rgba(255,255,255,.7); --glass-strong:rgba(255,255,255,.92); --glass-border:rgba(230,220,214,.7);
     --ink:#3A2620; --ink-2:#8A6F63; --ink-3:#B79E92;
     --cal:#E2472F; --cal-soft:rgba(226,71,47,.1);
     --protein:#D6456B; --carbs:#C77B12; --fat:#1F9468;
@@ -112,9 +112,9 @@
 
   .backdrop{ position:fixed; inset:0; z-index:0; pointer-events:none;
     background:
-      radial-gradient(58% 42% at 18% 8%, var(--blob-a), transparent 70%),
-      radial-gradient(52% 40% at 88% 26%, var(--blob-b), transparent 72%),
-      radial-gradient(60% 46% at 30% 88%, var(--blob-c), transparent 74%),
+      radial-gradient(90% 26% at 22% -4%, var(--blob-a), transparent 72%),
+      radial-gradient(70% 22% at 100% 6%, var(--blob-b), transparent 76%),
+      radial-gradient(60% 20% at 50% 100%, var(--blob-c), transparent 80%),
       var(--bg-base);
   }
   .content{ position:relative; z-index:1; }
@@ -127,7 +127,8 @@
     background:linear-gradient(to bottom, var(--bg-base) 35%, transparent);
   }
   .hicon{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    background:var(--glass); border:1px solid var(--glass-border); color:var(--ink-2);
+    background:var(--glass-strong); border:1px solid var(--glass-border); color:var(--ink-2);
+    box-shadow:0 2px 10px rgba(58,38,32,.06);
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
   .date-nav{ display:flex; align-items:center; justify-content:center; gap:2px; }
   .date-arrow{ width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--ink-3); border-radius:50%; }
@@ -194,7 +195,8 @@
   .food-edit-hint{ flex:0 0 auto; color:var(--ink-3); opacity:.55; }
 
   .day-total{ align-self:center; margin-top:10px; padding:8px 18px; border-radius:99px;
-    background:var(--glass); border:1px solid var(--glass-border);
+    background:var(--glass-strong); border:1px solid var(--glass-border);
+    box-shadow:0 2px 12px rgba(58,38,32,.07);
     backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
     font-size:13px; font-weight:700; color:var(--ink-2); }
   .day-total b{ color:var(--cal); font-family:var(--font-round); }
