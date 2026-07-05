@@ -412,11 +412,11 @@
     </div>
 
     <div class="set-group">
-      <h4>זיהוי חכם (Claude AI)</h4>
+      <h4>זיהוי חכם (AI)</h4>
       <div class="set-card">
         <div class="set-row" style="flex-direction:column; align-items:stretch; gap:8px;">
-          <label for="apiKeyInput">מפתח API של Anthropic</label>
-          <input type="password" class="key-input" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+          <label for="apiKeyInput">מפתח API — Gemini (AIza...) או Claude (sk-ant...)</label>
+          <input type="text" class="key-input" id="apiKeyInput" placeholder="AIza... או sk-ant-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
           <span class="ai-status" id="aiStatus"></span>
         </div>
       </div>
@@ -1429,9 +1429,11 @@
     }
     el.classList.toggle("on", aiEnabled() || hasBridge());
   }
-  document.getElementById("apiKeyInput").addEventListener("change", function(){
-    S.apiKey = this.value.trim();
-    saveState(); updateAiStatus();
+  ["input","change","blur"].forEach(function(evt){
+    document.getElementById("apiKeyInput").addEventListener(evt, function(){
+      S.apiKey = this.value.trim();
+      saveState(); updateAiStatus();
+    });
   });
 
   function fillSettings(){
