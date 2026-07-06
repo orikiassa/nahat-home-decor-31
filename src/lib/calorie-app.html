@@ -1,14 +1,15 @@
 <!doctype html>
 <html lang="he" dir="rtl">
 <head>
-<title>קלוריות · יומן אוכל</title>
+<title>קלוריקל · יומן קלוריות חכם</title>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
 <meta name="color-scheme" content="light dark" />
-<meta name="theme-color" content="#FFF6F1" />
+<meta name="theme-color" content="#FFFFFF" />
+<meta name="description" content="קלוריקל — צלמו את הצלחת או כתבו מה אכלתם, וה-AI מזהה לבד מאכלים, קלוריות ואבות מזון." />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="קלוריות" />
+<meta name="apple-mobile-web-app-title" content="קלוריקל" />
 <meta name="mobile-web-app-capable" content="yes" />
 <style>
   /* ============ Tokens ============ */
@@ -303,7 +304,7 @@
       <div class="date-nav">
         <button class="date-arrow" id="prevDayBtn" aria-label="יום קודם" type="button"></button>
         <button class="date-pill" id="dateLabelBtn" type="button">
-          <span class="date-eyebrow">יומן אוכל</span>
+          <span class="date-eyebrow">קלוריקל</span>
           <span class="date-label" id="dateLabel">היום</span>
         </button>
         <button class="date-arrow" id="nextDayBtn" aria-label="יום הבא" type="button"></button>
@@ -416,15 +417,22 @@
     <div class="set-group">
       <h4>זיהוי חכם (AI)</h4>
       <div class="set-card">
+        <div class="set-row">
+          <label>ספק ה-AI</label>
+          <div class="theme-seg" id="providerSeg" role="group" aria-label="בחירת ספק AI">
+            <button type="button" data-provider="gemini" aria-pressed="true">Gemini (חינם)</button>
+            <button type="button" data-provider="anthropic" aria-pressed="false">Claude</button>
+          </div>
+        </div>
         <div class="set-row" style="flex-direction:column; align-items:stretch; gap:8px;">
-          <label for="apiKeyInput">מפתח API — Gemini (AIza...) או Claude (sk-ant...)</label>
-          <input type="text" class="key-input" id="apiKeyInput" placeholder="AIza... או sk-ant-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <label for="apiKeyInput">מפתח API</label>
+          <input type="text" class="key-input" id="apiKeyInput" placeholder="הדביקו כאן את המפתח" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
           <span class="ai-status" id="aiStatus"></span>
         </div>
       </div>
       <div class="tip" style="margin-top:10px;">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3Z"></path></svg>
-        <span>עם מפתח, ה-AI מזהה אוכל <b>מתמונה בלבד</b> או מטקסט חופשי — כולל קלוריות ואבות מזון. שתי אפשרויות: <b>Google Gemini בחינם</b> — מפתח ב-aistudio.google.com (מתחיל ב-AIza), או <b>Claude</b> — מפתח ב-console.anthropic.com (מתחיל ב-sk-ant, בתשלום לפי שימוש). מדביקים כאן והאפליקציה מזהה לבד באיזה ספק מדובר. המפתח נשמר על המכשיר שלכם בלבד.</span>
+        <span>עם מפתח, ה-AI מזהה אוכל <b>מתמונה</b> או מטקסט חופשי — כולל קלוריות ואבות מזון. <b>Google Gemini בחינם</b> — מפתח ב-aistudio.google.com, או <b>Claude</b> — מפתח ב-console.anthropic.com (בתשלום). המפתח נשמר על המכשיר שלכם בלבד. שימו לב: הזיהוי מהאינטרנט עובד רק מהאתר עצמו, לא מתוך תצוגה בתוך Claude.</span>
       </div>
     </div>
 
@@ -694,7 +702,7 @@
 
   /* ================= State ================= */
   var STORAGE_KEY = "nahat-calorie-tracker-v1";
-  var DEFAULT_STATE = { theme:"system", apiKey:"", goals:{ calories:2000, protein:120, carbs:250, fat:65 }, entries:{}, chats:{}, custom:{} };
+  var DEFAULT_STATE = { theme:"system", apiKey:"", provider:"auto", goals:{ calories:2000, protein:120, carbs:250, fat:65 }, entries:{}, chats:{}, custom:{} };
   var S = loadState();
   function loadState(){
     try{
@@ -704,6 +712,7 @@
       return {
         theme:p.theme||"system",
         apiKey:p.apiKey||"",
+        provider:p.provider||"auto",
         goals:Object.assign({},DEFAULT_STATE.goals,p.goals||{}),
         entries:p.entries||{},
         chats:p.chats||{},
@@ -956,9 +965,13 @@
 
   function aiEnabled(){ return !!(S.apiKey && S.apiKey.trim()); }
 
-  /* Google keys start with "AIza", Anthropic keys with "sk-ant" — auto-detect provider */
+  /* Provider: explicit choice wins; otherwise Anthropic keys start with "sk-ant",
+     and everything else defaults to Gemini (covers AIza..., AQ...., and newer formats). */
   var GEMINI_MODEL = "gemini-2.5-flash";
-  function providerOf(){ return /^AIza/.test((S.apiKey||"").trim()) ? "gemini" : "anthropic"; }
+  function providerOf(){
+    if(S.provider === "anthropic" || S.provider === "gemini") return S.provider;
+    return /^sk-ant/i.test((S.apiKey||"").trim()) ? "anthropic" : "gemini";
+  }
 
   function analyzeWithGemini(text, photoDataUrl){
     var parts = [];
@@ -1434,8 +1447,23 @@
   ["input","change","blur"].forEach(function(evt){
     document.getElementById("apiKeyInput").addEventListener(evt, function(){
       S.apiKey = this.value.trim();
-      saveState(); updateAiStatus();
+      /* Auto-detect only the two known prefixes; otherwise keep the manual choice */
+      if(/^sk-ant/i.test(S.apiKey)) S.provider = "anthropic";
+      else if(/^AIza/.test(S.apiKey)) S.provider = "gemini";
+      saveState(); syncProviderSeg(); updateAiStatus();
     });
+  });
+
+  function syncProviderSeg(){
+    var p = providerOf();
+    document.querySelectorAll("#providerSeg button").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.provider===p ? "true":"false");
+    });
+  }
+  document.getElementById("providerSeg").addEventListener("click", function(e){
+    var btn = e.target.closest("button[data-provider]"); if(!btn) return;
+    S.provider = btn.dataset.provider;
+    saveState(); syncProviderSeg(); updateAiStatus();
   });
 
   function fillSettings(){
@@ -1444,6 +1472,7 @@
     document.getElementById("goalCarbs").value = S.goals.carbs;
     document.getElementById("goalFat").value = S.goals.fat;
     document.getElementById("apiKeyInput").value = S.apiKey || "";
+    syncProviderSeg();
     updateAiStatus();
     document.querySelectorAll("#themeSeg button").forEach(function(b){
       b.setAttribute("aria-pressed", b.dataset.themeChoice===S.theme ? "true":"false");
