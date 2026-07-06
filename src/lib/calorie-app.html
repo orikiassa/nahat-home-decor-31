@@ -124,7 +124,7 @@
   .topbar{
     position:sticky; top:0; z-index:20;
     padding:calc(env(safe-area-inset-top) + 8px) 14px 6px;
-    display:grid; grid-template-columns:44px 1fr 44px; align-items:center;
+    display:grid; grid-template-columns:44px 1fr 44px 44px; align-items:center;
     background:linear-gradient(to bottom, var(--bg-base) 35%, transparent);
   }
   .hicon{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -291,6 +291,29 @@
     font-size:12.5px; line-height:1.55; font-weight:600; }
   .tip svg{ flex:0 0 auto; color:var(--cal); margin-top:2px; }
   .tip b{ color:var(--ink); }
+
+  /* ============ Day-type toggle ============ */
+  .daytype-row{ display:flex; justify-content:center; margin:2px 0 8px; }
+  .daytype-seg{ display:flex; background:var(--track); border-radius:99px; padding:3px; gap:2px; }
+  .daytype-seg button{ padding:7px 14px; border-radius:99px; font-size:12.5px; font-weight:700; color:var(--ink-2); }
+  .daytype-seg button[aria-pressed="true"]{ background:var(--card,var(--sheet-bg)); color:var(--ink); box-shadow:0 1px 4px rgba(0,0,0,.1); }
+
+  /* ============ Saved foods ============ */
+  .saved-item{ display:flex; align-items:center; gap:12px; padding:10px 4px; width:100%; text-align:start;
+    border-radius:16px; background:none; }
+  .saved-item:active{ background:var(--field-bg); }
+  .saved-emoji{ width:46px; height:46px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    font-size:22px; background:var(--field-bg); border:1px solid var(--field-border); }
+  .saved-info{ flex:1 1 auto; min-width:0; }
+  .saved-name{ font-family:var(--font-display); font-size:16.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .saved-sub{ font-size:12px; color:var(--ink-2); margin-top:2px; }
+  .saved-edit{ width:32px; height:32px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:var(--ink-3); }
+  .saved-empty{ text-align:center; padding:30px 20px; color:var(--ink-3); font-size:13.5px; }
+  .save-fav-row{ margin-top:4px; margin-bottom:14px; }
+  .save-fav-btn{ width:100%; display:flex; align-items:center; justify-content:center; gap:7px;
+    padding:12px; border-radius:14px; background:var(--field-bg); border:1px dashed var(--field-border);
+    color:var(--ink-2); font-size:13.5px; font-weight:700; }
+  .save-fav-btn.saved{ color:var(--fat); border-style:solid; }
 </style>
 
 </head>
@@ -310,9 +333,16 @@
         <button class="date-arrow" id="nextDayBtn" aria-label="יום הבא" type="button"></button>
       </div>
       <button class="hicon" id="progressBtn" aria-label="התקדמות שבועית" type="button"></button>
+      <button class="hicon" id="savedBtn" aria-label="מאכלים שמורים" type="button"></button>
     </header>
 
     <section class="hero">
+      <div class="daytype-row">
+        <div class="daytype-seg" id="dayTypeSeg" role="group" aria-label="סוג היום">
+          <button type="button" data-daytype="rest" aria-pressed="true">😌 יום מנוחה</button>
+          <button type="button" data-daytype="training" aria-pressed="false">💪 יום אימון</button>
+        </div>
+      </div>
       <div class="hero-line">
         <span class="hero-remaining" id="heroRemaining">2,000</span>
         <span class="hero-sub" id="heroSub">נותרו</span>
@@ -368,10 +398,36 @@
       <label class="field"><span class="lc">פחמימות (ג׳)</span><input type="number" id="editC" inputmode="numeric" min="0"></label>
       <label class="field"><span class="lf">שומן (ג׳)</span><input type="number" id="editF" inputmode="numeric" min="0"></label>
     </div>
+    <div class="save-fav-row">
+      <button type="button" class="save-fav-btn" id="saveFavBtn">⭐ שמירה כמאכל מועדף (למשל שייק חלבון קבוע)</button>
+    </div>
     <div class="sheet-actions">
       <button type="button" class="primary-btn" id="editSave">שמירה</button>
       <button type="button" class="del-btn" id="editDelete">מחיקה</button>
     </div>
+  </div>
+
+  <!-- Saved foods sheet -->
+  <div class="sheet" id="savedSheet" hidden role="dialog" aria-modal="true" aria-labelledby="savedTitle">
+    <div class="grabber"></div>
+    <h2 id="savedTitle">מאכלים שמורים</h2>
+    <div id="savedList"></div>
+
+    <div id="savedAddForm" hidden>
+      <label class="field"><span>שם</span><input type="text" id="savedName" autocomplete="off"></label>
+      <label class="field"><span>קלוריות (למנה)</span><input type="number" id="savedKcal" inputmode="numeric" min="0"></label>
+      <div class="macro-fields">
+        <label class="field"><span class="lp">חלבון (ג׳)</span><input type="number" id="savedP" inputmode="numeric" min="0"></label>
+        <label class="field"><span class="lc">פחמימות (ג׳)</span><input type="number" id="savedC" inputmode="numeric" min="0"></label>
+        <label class="field"><span class="lf">שומן (ג׳)</span><input type="number" id="savedF" inputmode="numeric" min="0"></label>
+      </div>
+      <div class="sheet-actions">
+        <button type="button" class="primary-btn" id="savedFormSave">הוספה למועדפים</button>
+        <button type="button" class="del-btn" id="savedFormCancel">ביטול</button>
+      </div>
+      <button type="button" class="del-btn" id="savedFormDelete" style="width:100%; margin-top:8px;" hidden>מחיקה מהמועדפים</button>
+    </div>
+    <button type="button" class="save-fav-btn" id="savedAddBtn" style="margin-top:6px;">+ הוספת מאכל שמור חדש</button>
   </div>
 
   <!-- Progress sheet -->
@@ -391,13 +447,54 @@
     <h2 id="setTitle">הגדרות</h2>
 
     <div class="set-group">
-      <h4>יעד יומי</h4>
+      <h4>יעדים יומיים</h4>
       <div class="set-card">
+        <div class="set-row">
+          <label>עריכה עבור</label>
+          <div class="theme-seg" id="goalDaySeg" role="group" aria-label="בחירת סוג יום לעריכה">
+            <button type="button" data-goalday="rest" aria-pressed="true">יום מנוחה</button>
+            <button type="button" data-goalday="training" aria-pressed="false">יום אימון</button>
+          </div>
+        </div>
         <div class="set-row"><label for="goalCalories">קלוריות</label><input type="number" id="goalCalories" inputmode="numeric" min="0"></div>
         <div class="set-row"><label for="goalProtein">חלבון (ג׳)</label><input type="number" id="goalProtein" inputmode="numeric" min="0"></div>
         <div class="set-row"><label for="goalCarbs">פחמימות (ג׳)</label><input type="number" id="goalCarbs" inputmode="numeric" min="0"></div>
         <div class="set-row"><label for="goalFat">שומן (ג׳)</label><input type="number" id="goalFat" inputmode="numeric" min="0"></div>
       </div>
+    </div>
+
+    <div class="set-group">
+      <h4>פרופיל אישי (לחישוב אוטומטי)</h4>
+      <div class="set-card">
+        <div class="set-row"><label for="profHeight">גובה (ס״מ)</label><input type="number" id="profHeight" inputmode="numeric" min="0"></div>
+        <div class="set-row"><label for="profWeight">משקל (ק״ג)</label><input type="number" id="profWeight" inputmode="numeric" min="0"></div>
+        <div class="set-row"><label for="profAge">גיל</label><input type="number" id="profAge" inputmode="numeric" min="0"></div>
+        <div class="set-row">
+          <label>מין</label>
+          <div class="theme-seg" id="profSexSeg" role="group" aria-label="בחירת מין">
+            <button type="button" data-sex="male" aria-pressed="true">זכר</button>
+            <button type="button" data-sex="female" aria-pressed="false">נקבה</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <label>מטרה</label>
+          <div class="theme-seg" id="profGoalSeg" role="group" aria-label="בחירת מטרה">
+            <button type="button" data-goal="cut" aria-pressed="true">חיתוך</button>
+            <button type="button" data-goal="maintain" aria-pressed="false">שימור</button>
+            <button type="button" data-goal="bulk" aria-pressed="false">מאסה</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <label>אימונים בשבוע</label>
+          <div class="theme-seg" id="profFreqSeg" role="group" aria-label="בחירת תדירות אימונים">
+            <button type="button" data-freq="0-1" aria-pressed="false">0-1</button>
+            <button type="button" data-freq="2-4" aria-pressed="true">2-4</button>
+            <button type="button" data-freq="5-6" aria-pressed="false">5-6+</button>
+          </div>
+        </div>
+      </div>
+      <button class="save-fav-btn" id="calcGoalsBtn" type="button" style="margin-top:10px;">📐 חשב יעדים אוטומטית</button>
+      <div class="tip" id="calcResultTip" style="margin-top:10px;" hidden></div>
     </div>
 
     <div class="set-group">
@@ -464,10 +561,13 @@
     chart:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"></path></svg>',
     camera:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>',
     photo:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"></rect><circle cx="9" cy="9" r="2"></circle><path d="M21 15l-4.5-4.5L7 20"></path></svg>',
-    pencil:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4L8 20l-5 1 1-5L17 3Z"></path></svg>'
+    pencil:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4L8 20l-5 1 1-5L17 3Z"></path></svg>',
+    star:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.65l5.9-.85L12 3.5Z"></path></svg>',
+    starFilled:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.75 1-5.85L3.5 9.65l5.9-.85L12 3.5Z"></path></svg>'
   };
   document.getElementById("settingsBtn").innerHTML = ICONS.gear;
   document.getElementById("progressBtn").innerHTML = ICONS.chart;
+  document.getElementById("savedBtn").innerHTML = ICONS.star;
   document.getElementById("prevDayBtn").innerHTML = ICONS.chevR;
   document.getElementById("nextDayBtn").innerHTML = ICONS.chevL;
   document.getElementById("sendBtn").innerHTML = ICONS.send;
@@ -702,18 +802,67 @@
 
   /* ================= State ================= */
   var STORAGE_KEY = "nahat-calorie-tracker-v1";
-  var DEFAULT_STATE = { theme:"system", apiKey:"", provider:"auto", goals:{ calories:2000, protein:120, carbs:250, fat:65 }, entries:{}, chats:{}, custom:{} };
+
+  /* Mifflin-St Jeor BMR + activity multiplier, split into a training-day and
+     a rest-day target. Protein is fixed g/kg bodyweight (higher on a cut to
+     preserve muscle); fat is ~25% of calories; carbs fill the remainder —
+     so the calorie bump on training days flows mostly into carbs. */
+  function computeGoals(profile){
+    var sexOffset = profile.sex === "female" ? -161 : 5;
+    var bmr = 10*profile.weightKg + 6.25*profile.heightCm - 5*profile.age + sexOffset;
+    var restMult = 1.3, trainMult = 1.55;
+    if(profile.freq === "5-6"){ restMult = 1.35; trainMult = 1.65; }
+    else if(profile.freq === "0-1"){ restMult = 1.2; trainMult = 1.45; }
+    var restTdee = bmr*restMult, trainTdee = bmr*trainMult;
+    var restAdj = 0, trainAdj = 0;
+    if(profile.goal === "cut"){ restAdj = 400; trainAdj = 300; }
+    else if(profile.goal === "bulk"){ restAdj = -250; trainAdj = -350; }
+    else { restAdj = 100; trainAdj = 0; }
+    var restCal = Math.max(1200, Math.round((restTdee-restAdj)/10)*10);
+    var trainCal = Math.max(1200, Math.round((trainTdee-trainAdj)/10)*10);
+    var proteinPerKg = profile.goal === "cut" ? 2.2 : 2.0;
+    var protein = Math.round(proteinPerKg*profile.weightKg);
+    function split(cal){
+      var fat = Math.round((cal*0.25)/9);
+      var carbs = Math.max(0, Math.round((cal - protein*4 - fat*9)/4));
+      return { calories:cal, protein:protein, carbs:carbs, fat:fat };
+    }
+    return { rest: split(restCal), training: split(trainCal) };
+  }
+
+  var DEFAULT_PROFILE = { heightCm:176, weightKg:98, age:22, sex:"male", goal:"cut", freq:"2-4" };
+  var DEFAULT_STATE = {
+    theme:"system", apiKey:"", provider:"auto",
+    profile: DEFAULT_PROFILE,
+    goals: computeGoals(DEFAULT_PROFILE),
+    trainingDays:{}, savedFoods:[],
+    entries:{}, chats:{}, custom:{}
+  };
   var S = loadState();
   function loadState(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
       var p = JSON.parse(raw);
+      var goals;
+      if(p.goals && p.goals.training && p.goals.rest){
+        goals = { training:Object.assign({},DEFAULT_STATE.goals.training,p.goals.training),
+                  rest:Object.assign({},DEFAULT_STATE.goals.rest,p.goals.rest) };
+      } else if(p.goals){
+        /* migrate old single flat goal set: seed both day types from it */
+        goals = { training:Object.assign({},DEFAULT_STATE.goals.training,p.goals),
+                  rest:Object.assign({},DEFAULT_STATE.goals.rest,p.goals) };
+      } else {
+        goals = JSON.parse(JSON.stringify(DEFAULT_STATE.goals));
+      }
       return {
         theme:p.theme||"system",
         apiKey:p.apiKey||"",
         provider:p.provider||"auto",
-        goals:Object.assign({},DEFAULT_STATE.goals,p.goals||{}),
+        profile:Object.assign({}, DEFAULT_PROFILE, p.profile||{}),
+        goals:goals,
+        trainingDays:p.trainingDays||{},
+        savedFoods:p.savedFoods||[],
         entries:p.entries||{},
         chats:p.chats||{},
         custom:p.custom||{}
@@ -721,6 +870,8 @@
     }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_STATE)); }
   }
   function saveState(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){} }
+  function isTrainingDay(key){ return !!S.trainingDays[key]; }
+  function activeGoalsFor(key){ return isTrainingDay(key) ? S.goals.training : S.goals.rest; }
 
   /* ================= Dates ================= */
   var WEEKDAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
@@ -765,10 +916,14 @@
 
   /* ================= Render ================= */
   function renderHero(){
-    var t = totals(getEntries(dateKey(currentDate)));
-    var g = S.goals;
+    var key = dateKey(currentDate);
+    var t = totals(getEntries(key));
+    var g = activeGoalsFor(key);
     document.getElementById("dateLabel").textContent = fmtDateLabel(currentDate);
     document.getElementById("nextDayBtn").disabled = stripTime(currentDate).getTime() >= stripTime(new Date()).getTime();
+    document.querySelectorAll("#dayTypeSeg button").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.daytype === (isTrainingDay(key) ? "training" : "rest") ? "true" : "false");
+    });
 
     var remaining = g.calories - t.calories;
     var over = remaining < 0;
@@ -932,8 +1087,9 @@
 
   var CONFIRMS = ["נרשם ✨","יאמי, נוסף ליומן 🙂","מעולה, עודכן!","נשמע טעים — נרשם 🥐","נוסף ליומן 🌿"];
   function remainingTail(){
-    var t = totals(getEntries(dateKey(currentDate)));
-    var remaining = S.goals.calories - t.calories;
+    var key = dateKey(currentDate);
+    var t = totals(getEntries(key));
+    var remaining = activeGoalsFor(key).calories - t.calories;
     if(remaining >= 0) return " נשארו "+fmt(remaining)+" קל׳ להיום.";
     return " עברת את היעד ב-"+fmt(Math.abs(remaining))+" קל׳ — קורה 🙂";
   }
@@ -1265,7 +1421,8 @@
   var sheets = {
     edit: document.getElementById("editSheet"),
     progress: document.getElementById("progressSheet"),
-    settings: document.getElementById("settingsSheet")
+    settings: document.getElementById("settingsSheet"),
+    saved: document.getElementById("savedSheet")
   };
   var openSheetName = null;
   function openSheet(name){
@@ -1347,6 +1504,155 @@
     closeSheet(); renderHero(); renderChat(false); renderProgress();
   });
 
+  /* ---- save current edit-sheet entry as a favorite ---- */
+  document.getElementById("saveFavBtn").addEventListener("click", function(){
+    if(!editCtx) return;
+    var name = document.getElementById("editName").value.trim();
+    if(!name) return;
+    S.savedFoods.push({
+      id:"f"+Date.now()+Math.random().toString(36).slice(2,6),
+      name:name, unit:"מנה",
+      kcal:Math.round(editCtx.baseKcal), protein:Math.round(editCtx.baseP),
+      carbs:Math.round(editCtx.baseC), fat:Math.round(editCtx.baseF),
+      emoji:"⭐"
+    });
+    saveState();
+    var btn = this;
+    btn.classList.add("saved");
+    btn.textContent = "✓ נשמר במועדפים";
+    setTimeout(function(){ btn.classList.remove("saved"); btn.textContent = "⭐ שמירה כמאכל מועדף (למשל שייק חלבון קבוע)"; }, 2200);
+  });
+
+  /* ================= Saved foods ================= */
+  document.getElementById("savedBtn").addEventListener("click", function(){
+    renderSavedList();
+    document.getElementById("savedAddForm").hidden = true;
+    document.getElementById("savedAddBtn").hidden = false;
+    openSheet("saved");
+  });
+
+  function renderSavedList(){
+    var box = document.getElementById("savedList");
+    box.innerHTML = "";
+    if(S.savedFoods.length === 0){
+      var empty = document.createElement("div");
+      empty.className = "saved-empty";
+      empty.textContent = "אין עדיין מאכלים שמורים. שמרו מאכל שאתם חוזרים עליו הרבה (כמו שייק חלבון) בלחיצה על ⭐ בתוך מסך העריכה, או הוסיפו אחד ידנית למטה.";
+      box.appendChild(empty);
+      return;
+    }
+    S.savedFoods.forEach(function(item){
+      var row = document.createElement("button");
+      row.type = "button";
+      row.className = "saved-item";
+      row.setAttribute("aria-label", "הוספת "+item.name+" ליומן");
+
+      var emoji = document.createElement("div");
+      emoji.className = "saved-emoji";
+      emoji.textContent = item.emoji || "⭐";
+      row.appendChild(emoji);
+
+      var info = document.createElement("div");
+      info.className = "saved-info";
+      var name = document.createElement("div");
+      name.className = "saved-name";
+      name.textContent = item.name;
+      var sub = document.createElement("div");
+      sub.className = "saved-sub";
+      sub.textContent = fmt(item.kcal)+" קל׳ · ח "+fmt(item.protein)+" · פ "+fmt(item.carbs)+" · ש "+fmt(item.fat);
+      info.appendChild(name); info.appendChild(sub);
+      row.appendChild(info);
+
+      var editBtn = document.createElement("span");
+      editBtn.className = "saved-edit";
+      editBtn.innerHTML = ICONS.pencil;
+      editBtn.setAttribute("role","button");
+      editBtn.setAttribute("aria-label","עריכת "+item.name);
+      row.appendChild(editBtn);
+
+      editBtn.addEventListener("click", function(ev){
+        ev.stopPropagation();
+        openSavedForm(item);
+      });
+      row.addEventListener("click", function(){ quickLogSaved(item); });
+
+      box.appendChild(row);
+    });
+  }
+
+  function quickLogSaved(item){
+    var key = dateKey(currentDate);
+    var now = Date.now();
+    var entry = makeEntry(item.name, item.unit||"מנה", 1, item.kcal, item.protein, item.carbs, item.fat, item.emoji, null, now);
+    addEntryObj(key, entry);
+    pushMsg(key, { k:"e", id:entry.id, ts:now });
+    pushMsg(key, { k:"b", t:"נוסף מהמועדפים ✨"+remainingTail(), ts:now+1 });
+    saveState();
+    closeSheet();
+    renderHero(); renderChat(true); renderProgress();
+  }
+
+  var editingSavedId = null;
+  function openSavedForm(item){
+    editingSavedId = item ? item.id : null;
+    document.getElementById("savedName").value = item ? item.name : "";
+    document.getElementById("savedKcal").value = item ? item.kcal : "";
+    document.getElementById("savedP").value = item ? item.protein : "";
+    document.getElementById("savedC").value = item ? item.carbs : "";
+    document.getElementById("savedF").value = item ? item.fat : "";
+    document.getElementById("savedFormSave").textContent = item ? "שמירת שינויים" : "הוספה למועדפים";
+    var delBtn = document.getElementById("savedFormDelete");
+    delBtn.hidden = !item;
+    delBtn.classList.remove("armed"); delBtn.textContent = "מחיקה מהמועדפים";
+    document.getElementById("savedAddForm").hidden = false;
+    document.getElementById("savedAddBtn").hidden = true;
+  }
+  var savedDelTimer = null;
+  document.getElementById("savedFormDelete").addEventListener("click", function(){
+    var btn = this;
+    if(!btn.classList.contains("armed")){
+      btn.classList.add("armed"); btn.textContent = "בטוח? הקישו שוב";
+      clearTimeout(savedDelTimer);
+      savedDelTimer = setTimeout(function(){ btn.classList.remove("armed"); btn.textContent = "מחיקה מהמועדפים"; }, 2600);
+      return;
+    }
+    clearTimeout(savedDelTimer);
+    S.savedFoods = S.savedFoods.filter(function(f){ return f.id !== editingSavedId; });
+    saveState();
+    document.getElementById("savedAddForm").hidden = true;
+    document.getElementById("savedAddBtn").hidden = false;
+    renderSavedList();
+  });
+  document.getElementById("savedAddBtn").addEventListener("click", function(){ openSavedForm(null); });
+  document.getElementById("savedFormCancel").addEventListener("click", function(){
+    document.getElementById("savedAddForm").hidden = true;
+    document.getElementById("savedAddBtn").hidden = false;
+  });
+  document.getElementById("savedFormSave").addEventListener("click", function(){
+    var name = document.getElementById("savedName").value.trim();
+    var kcal = Number(document.getElementById("savedKcal").value);
+    if(!name || !(kcal>0)) return;
+    var data = {
+      name:name, unit:"מנה",
+      kcal:kcal,
+      protein:Math.max(0,Number(document.getElementById("savedP").value)||0),
+      carbs:Math.max(0,Number(document.getElementById("savedC").value)||0),
+      fat:Math.max(0,Number(document.getElementById("savedF").value)||0),
+      emoji:"⭐"
+    };
+    if(editingSavedId){
+      var existing = S.savedFoods.find(function(f){ return f.id===editingSavedId; });
+      if(existing) Object.assign(existing, data);
+    } else {
+      data.id = "f"+Date.now()+Math.random().toString(36).slice(2,6);
+      S.savedFoods.push(data);
+    }
+    saveState();
+    document.getElementById("savedAddForm").hidden = true;
+    document.getElementById("savedAddBtn").hidden = false;
+    renderSavedList();
+  });
+
   /* ================= Day nav ================= */
   document.getElementById("prevDayBtn").addEventListener("click", function(){ currentDate = addDays(currentDate,-1); renderHero(); renderChat(false); });
   document.getElementById("nextDayBtn").addEventListener("click", function(){
@@ -1354,6 +1660,12 @@
     currentDate = addDays(currentDate,1); renderHero(); renderChat(false);
   });
   document.getElementById("dateLabelBtn").addEventListener("click", function(){ currentDate = stripTime(new Date()); renderHero(); renderChat(false); });
+
+  document.getElementById("dayTypeSeg").addEventListener("click", function(e){
+    var btn = e.target.closest("button[data-daytype]"); if(!btn) return;
+    S.trainingDays[dateKey(currentDate)] = (btn.dataset.daytype === "training");
+    saveState(); renderHero(); renderProgress();
+  });
 
   /* ================= Progress ================= */
   document.getElementById("progressBtn").addEventListener("click", function(){ renderProgress(); openSheet("progress"); });
@@ -1366,14 +1678,15 @@
     var days = [];
     for(var i=6;i>=0;i--){
       var d = addDays(stripTime(new Date()), -i);
-      days.push({ date:d, kcal: totals(getEntries(dateKey(d))).calories });
+      var dKey = dateKey(d);
+      days.push({ date:d, kcal: totals(getEntries(dKey)).calories, goal: activeGoalsFor(dKey).calories });
     }
     var padding=10, plotW=300, plotH=112, baseY=134;
-    var goal = S.goals.calories;
-    var maxVal = Math.max(goal,1,Math.max.apply(null,days.map(function(x){return x.kcal;})))*1.18;
+    var refGoal = S.goals.rest.calories;
+    var maxVal = Math.max(refGoal,1,Math.max.apply(null,days.map(function(x){return Math.max(x.kcal,x.goal);})))*1.18;
     var slot = plotW/7, barW = Math.min(24, slot*0.48);
 
-    var goalY = baseY-(goal/maxVal)*plotH;
+    var goalY = baseY-(refGoal/maxVal)*plotH;
     var gl = document.createElementNS("http://www.w3.org/2000/svg","line");
     gl.setAttribute("x1",padding); gl.setAttribute("x2",padding+plotW);
     gl.setAttribute("y1",goalY); gl.setAttribute("y2",goalY);
@@ -1382,7 +1695,7 @@
     var glab = document.createElementNS("http://www.w3.org/2000/svg","text");
     glab.setAttribute("x",padding); glab.setAttribute("y",goalY-5);
     glab.setAttribute("fill","var(--ink-3)"); glab.setAttribute("font-size","9.5"); glab.setAttribute("font-weight","700");
-    glab.textContent = "יעד";
+    glab.textContent = "יעד מנוחה";
     svg.appendChild(glab);
 
     days.forEach(function(day, idx){
@@ -1395,7 +1708,7 @@
       rect.setAttribute("x",x); rect.setAttribute("y",y);
       rect.setAttribute("width",barW); rect.setAttribute("height",h);
       rect.setAttribute("rx",barW/2);
-      rect.setAttribute("fill", day.kcal>goal ? "var(--danger)" : "var(--cal)");
+      rect.setAttribute("fill", day.kcal>day.goal ? "var(--danger)" : "var(--cal)");
       rect.setAttribute("opacity", isToday ? "1" : "0.55");
       rect.classList.add("bar-rect");
       svg.appendChild(rect);
@@ -1422,7 +1735,7 @@
     });
 
     var totalWeek = days.reduce(function(a,d){return a+d.kcal;},0);
-    var onTrack = days.filter(function(d){return d.kcal>0 && d.kcal<=goal;}).length;
+    var onTrack = days.filter(function(d){return d.kcal>0 && d.kcal<=d.goal;}).length;
     var loggedDays = days.filter(function(d){return d.kcal>0;}).length;
     document.getElementById("statRow").innerHTML =
       '<div class="stat"><div class="num">'+fmt(totalWeek/7)+'</div><div class="lbl">ממוצע יומי</div></div>'+
@@ -1466,11 +1779,49 @@
     saveState(); syncProviderSeg(); updateAiStatus();
   });
 
+  function bindChipGroup(id, attr){
+    document.getElementById(id).addEventListener("click", function(e){
+      var btn = e.target.closest("button[data-"+attr+"]"); if(!btn) return;
+      document.querySelectorAll("#"+id+" button").forEach(function(b){
+        b.setAttribute("aria-pressed", b===btn ? "true":"false");
+      });
+    });
+  }
+  function chipValue(id, attr){
+    var btn = document.querySelector("#"+id+' button[aria-pressed="true"]');
+    return btn ? btn.getAttribute("data-"+attr) : null;
+  }
+  function setChipValue(id, attr, value){
+    document.querySelectorAll("#"+id+" button").forEach(function(b){
+      b.setAttribute("aria-pressed", b.getAttribute("data-"+attr)===value ? "true":"false");
+    });
+  }
+
+  var editingGoalDay = "rest";
+  function fillGoalInputs(){
+    var g = S.goals[editingGoalDay];
+    document.getElementById("goalCalories").value = g.calories;
+    document.getElementById("goalProtein").value = g.protein;
+    document.getElementById("goalCarbs").value = g.carbs;
+    document.getElementById("goalFat").value = g.fat;
+  }
+  bindChipGroup("goalDaySeg", "goalday");
+  document.getElementById("goalDaySeg").addEventListener("click", function(e){
+    var btn = e.target.closest("button[data-goalday]"); if(!btn) return;
+    editingGoalDay = btn.dataset.goalday;
+    fillGoalInputs();
+  });
+
   function fillSettings(){
-    document.getElementById("goalCalories").value = S.goals.calories;
-    document.getElementById("goalProtein").value = S.goals.protein;
-    document.getElementById("goalCarbs").value = S.goals.carbs;
-    document.getElementById("goalFat").value = S.goals.fat;
+    setChipValue("goalDaySeg", "goalday", editingGoalDay);
+    fillGoalInputs();
+    document.getElementById("profHeight").value = S.profile.heightCm;
+    document.getElementById("profWeight").value = S.profile.weightKg;
+    document.getElementById("profAge").value = S.profile.age;
+    setChipValue("profSexSeg", "sex", S.profile.sex);
+    setChipValue("profGoalSeg", "goal", S.profile.goal);
+    setChipValue("profFreqSeg", "freq", S.profile.freq);
+    document.getElementById("calcResultTip").hidden = true;
     document.getElementById("apiKeyInput").value = S.apiKey || "";
     syncProviderSeg();
     updateAiStatus();
@@ -1481,9 +1832,37 @@
   [["goalCalories","calories"],["goalProtein","protein"],["goalCarbs","carbs"],["goalFat","fat"]].forEach(function(pair){
     document.getElementById(pair[0]).addEventListener("change", function(){
       var v = Math.max(0, Number(this.value)||0);
-      S.goals[pair[1]] = v; this.value = v;
-      saveState(); renderHero();
+      S.goals[editingGoalDay][pair[1]] = v; this.value = v;
+      saveState(); renderHero(); renderProgress();
     });
+  });
+
+  bindChipGroup("profSexSeg", "sex");
+  bindChipGroup("profGoalSeg", "goal");
+  bindChipGroup("profFreqSeg", "freq");
+  ["profHeight","profWeight","profAge"].forEach(function(id){
+    document.getElementById(id).addEventListener("change", function(){
+      this.value = Math.max(0, Number(this.value)||0);
+    });
+  });
+
+  document.getElementById("calcGoalsBtn").addEventListener("click", function(){
+    var profile = {
+      heightCm: Math.max(1, Number(document.getElementById("profHeight").value)||S.profile.heightCm),
+      weightKg: Math.max(1, Number(document.getElementById("profWeight").value)||S.profile.weightKg),
+      age: Math.max(1, Number(document.getElementById("profAge").value)||S.profile.age),
+      sex: chipValue("profSexSeg","sex") || "male",
+      goal: chipValue("profGoalSeg","goal") || "maintain",
+      freq: chipValue("profFreqSeg","freq") || "2-4"
+    };
+    S.profile = profile;
+    S.goals = computeGoals(profile);
+    saveState();
+    fillGoalInputs();
+    renderHero(); renderProgress();
+    var tip = document.getElementById("calcResultTip");
+    tip.hidden = false;
+    tip.innerHTML = "חושב לפי הפרופיל שלכם:<br>💪 יום אימון: <b>"+fmt(S.goals.training.calories)+"</b> קל׳ · ח "+fmt(S.goals.training.protein)+"ג׳ · פ "+fmt(S.goals.training.carbs)+"ג׳ · ש "+fmt(S.goals.training.fat)+"ג׳<br>😌 יום מנוחה: <b>"+fmt(S.goals.rest.calories)+"</b> קל׳ · ח "+fmt(S.goals.rest.protein)+"ג׳ · פ "+fmt(S.goals.rest.carbs)+"ג׳ · ש "+fmt(S.goals.rest.fat)+"ג׳<br>אפשר לדייק ידנית למעלה בכל רגע.";
   });
   document.getElementById("themeSeg").addEventListener("click", function(e){
     var btn = e.target.closest("button[data-theme-choice]"); if(!btn) return;
