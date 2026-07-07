@@ -1242,13 +1242,25 @@
   function addAIItems(key, items, attachPhoto){
     var ts = Date.now();
     items.forEach(function(it, i){
+      var qty = (it.qty > 0 && it.qty <= 20) ? it.qty : 1;
       var entry = makeEntry(
-        it.name || "מאכל", it.unit || "מנה", (it.qty > 0 && it.qty <= 20) ? it.qty : 1,
+        it.name || "מאכל", it.unit || "מנה", qty,
         Math.max(0, it.kcal || 0), Math.max(0, it.protein_g || 0), Math.max(0, it.carbs_g || 0), Math.max(0, it.fat_g || 0),
         it.emoji || "🍽️", (i === 0 ? attachPhoto : null), ts + i
       );
       addEntryObj(key, entry);
       pushMsg(key, { k:"e", id:entry.id, ts:ts+i });
+      /* auto-learn: the offline recognizer now knows this food for next time */
+      var nk = norm(it.name || "");
+      if(nk.length >= 2){
+        S.custom[nk] = {
+          name: it.name, unit: it.unit || "מנה", emoji: it.emoji || "🍽️",
+          kcal: Math.round(Math.max(0, it.kcal || 0) / qty),
+          p: Math.round(Math.max(0, it.protein_g || 0) / qty),
+          c: Math.round(Math.max(0, it.carbs_g || 0) / qty),
+          f: Math.round(Math.max(0, it.fat_g || 0) / qty)
+        };
+      }
     });
   }
 
