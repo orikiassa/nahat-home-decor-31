@@ -869,7 +869,33 @@
       };
     }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_STATE)); }
   }
-  function saveState(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); }catch(e){} }
+  var storageWarned = false;
+  function warnStorage(){
+    if(storageWarned) return;
+    storageWarned = true;
+    var el = document.createElement("div");
+    el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99;background:#D93025;color:#fff;font-size:13px;font-weight:700;text-align:center;padding:10px 14px;direction:rtl;";
+    el.textContent = "שימו לב: אחסון הדפדפן מלא והנתונים החדשים לא נשמרים. מחקו רשומות ישנות (בעיקר עם תמונות).";
+    document.body.appendChild(el);
+  }
+  /* strip stored photos from days before the cutoff to free localStorage space */
+  function stripPhotosBefore(cutoffKey){
+    Object.keys(S.entries).forEach(function(k){
+      if(k < cutoffKey) (S.entries[k]||[]).forEach(function(e){ if(e.photo) e.photo = null; });
+    });
+    Object.keys(S.chats).forEach(function(k){
+      if(k < cutoffKey) (S.chats[k]||[]).forEach(function(m){ if(m.ph) m.ph = null; });
+    });
+  }
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); return; }catch(e){}
+    /* quota exceeded — drop photos older than a week, then everything before today, then warn */
+    stripPhotosBefore(dateKey(addDays(new Date(), -7)));
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); return; }catch(e){}
+    stripPhotosBefore(dateKey(new Date()));
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(S)); return; }catch(e){}
+    warnStorage();
+  }
   function isTrainingDay(key){ return !!S.trainingDays[key]; }
   function activeGoalsFor(key){ return isTrainingDay(key) ? S.goals.training : S.goals.rest; }
 
@@ -1323,14 +1349,16 @@
   document.getElementById("chatForm").addEventListener("submit", function(ev){
     ev.preventDefault();
     var text = chatInput.value.trim();
-    var photo = pendingPhoto;
+    var photo = pendingPhoto;                          /* full-res — sent to the AI only, never stored */
+    var photoThumb = pendingPhotoThumb || pendingPhoto; /* small thumbnail — the only version we persist */
     if(!text && !photo) return;
 
     var key = dateKey(currentDate);
     var now = Date.now();
-    pushMsg(key, { k:"u", t:text||null, ph:photo||null, ts:now });
+    pushMsg(key, { k:"u", t:text||null, ph:photoThumb||null, ts:now });
 
-    var attachPhoto = photo || awaitingPhotoEntry;
+    var aiPhoto = photo || awaitingPhotoEntry;
+    var storePhoto = photoThumb || awaitingPhotoEntry;
     awaitingPhotoEntry = null;
 
     clearPending();
@@ -1344,32 +1372,32 @@
       if(!result.items.length){
         pushMsg(key, { k:"b", t: result.comment || "לא זיהיתי שם אוכל 🤔", ts:ts });
       } else {
-        addAIItems(key, result.items, attachPhoto);
+        addAIItems(key, result.items, storePhoto);
         pushMsg(key, { k:"b", t:(result.comment || "נרשם ✨") + remainingTail(), ts:Date.now() });
       }
       saveState(); renderHero(); renderChat(true); renderProgress();
     }
     function runApi(){
       showTyping();
-      analyzeWithAI(text, attachPhoto).then(handleAIResult).catch(function(err){
+      analyzeWithAI(text, aiPhoto).then(handleAIResult).catch(function(err){
         hideTyping();
-        handleAIFailure(err, key, text, attachPhoto);
+        handleAIFailure(err, key, text, storePhoto);
       });
     }
 
     /* Routing: free subscription bridge for text; API (vision) for photos; local as fallback */
-    if(text && hasBridge() && !(attachPhoto && aiEnabled())){
+    if(text && hasBridge() && !(aiPhoto && aiEnabled())){
       showTyping();
       analyzeViaBridge(text).then(handleAIResult).catch(function(err){
         hideTyping();
         if(aiEnabled()) runApi();
-        else handleAIFailure(err, key, text, attachPhoto);
+        else handleAIFailure(err, key, text, storePhoto);
       });
       return;
     }
     if(aiEnabled()){ runApi(); return; }
 
-    handleLocal(key, text, attachPhoto, now);
+    handleLocal(key, text, storePhoto, now);
   });
 
   function makeEntry(name, unit, qty, kcal, p, c, f, emoji, photo, ts){
@@ -1387,8 +1415,10 @@
   document.getElementById("galleryBtn").addEventListener("click", function(){ galleryInput.click(); });
   document.getElementById("cameraBtn").addEventListener("click", function(){ cameraInput.click(); });
 
+  var pendingPhotoThumb = null;
+
   function clearPending(){
-    pendingPhoto = null;
+    pendingPhoto = null; pendingPhotoThumb = null;
     document.getElementById("pendingPhoto").hidden = true;
     galleryInput.value = ""; cameraInput.value = "";
   }
@@ -1402,7 +1432,28 @@
       document.getElementById("pendingPhoto").hidden = false;
       updateSendState();
       chatInput.focus();
+      return shrinkDataUrl(dataUrl, 280, 0.55);
+    }).then(function(thumb){
+      if(thumb) pendingPhotoThumb = thumb;
     }).catch(function(){});
+  }
+
+  /* re-encode an existing dataURL down to thumbnail size (display is a 72px circle) */
+  function shrinkDataUrl(dataUrl, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      img.onload = function(){
+        var w=img.width, h=img.height;
+        if(w<=maxDim && h<=maxDim){ resolve(dataUrl); return; }
+        if(w>h){ h=Math.round(h*(maxDim/w)); w=maxDim; }
+        else { w=Math.round(w*(maxDim/h)); h=maxDim; }
+        var cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        resolve(cv.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
   }
   galleryInput.addEventListener("change", function(e){ handleFile(e.target.files && e.target.files[0]); });
   cameraInput.addEventListener("change", function(e){ handleFile(e.target.files && e.target.files[0]); });
@@ -1943,6 +1994,23 @@
   if(window.matchMedia){
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
   }
+
+  /* storage repair: shrink any full-size photos saved by older versions down to
+     thumbnails, freeing localStorage so saving works again */
+  (function repairStoredPhotos(){
+    var jobs = [];
+    function shrinkInto(obj, prop){
+      var v = obj[prop];
+      if(typeof v === "string" && v.indexOf("data:image") === 0 && v.length > 60000){
+        jobs.push(shrinkDataUrl(v, 280, 0.55).then(function(sm){ obj[prop] = sm; }).catch(function(){}));
+      }
+    }
+    Object.keys(S.entries).forEach(function(k){ (S.entries[k]||[]).forEach(function(e){ shrinkInto(e, "photo"); }); });
+    Object.keys(S.chats).forEach(function(k){ (S.chats[k]||[]).forEach(function(m){ shrinkInto(m, "ph"); }); });
+    if(jobs.length){
+      Promise.all(jobs).then(function(){ saveState(); renderChat(false); });
+    }
+  })();
 })();
 </script>
 
