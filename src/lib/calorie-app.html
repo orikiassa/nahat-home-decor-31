@@ -1167,20 +1167,35 @@
       body: JSON.stringify({
         systemInstruction:{ parts:[{ text: AI_SYSTEM + ' החזר אך ורק JSON תקין במבנה: {"items":[{"name":"...","unit":"...","qty":1,"kcal":0,"protein_g":0,"carbs_g":0,"fat_g":0,"emoji":"🍽️"}],"comment":"..."} בלי שום טקסט נוסף.' }] },
         contents:[{ role:"user", parts: parts }],
-        generationConfig:{ responseMimeType:"application/json", maxOutputTokens: 2048 }
+        /* thinkingBudget 0: Gemini 2.5's thinking tokens count against maxOutputTokens,
+           and on busy plates they can eat the whole budget and leave an empty reply */
+        generationConfig:{ responseMimeType:"application/json", maxOutputTokens: 8192,
+                           thinkingConfig:{ thinkingBudget: 0 } }
       })
     }).then(function(res){
-      if(!res.ok){
-        var err = new Error("api_error_"+res.status);
-        err.status = res.status;
-        throw err;
-      }
-      return res.json();
+      return res.json().catch(function(){ return {}; }).then(function(data){
+        if(!res.ok){
+          var err = new Error("api_error_"+res.status);
+          err.status = res.status;
+          err.detail = data && data.error && data.error.message || "";
+          throw err;
+        }
+        return data;
+      });
     }).then(function(data){
+      if(data.promptFeedback && data.promptFeedback.blockReason){
+        var berr = new Error("blocked");
+        berr.detail = data.promptFeedback.blockReason;
+        throw berr;
+      }
       var txt = "";
       try{ txt = data.candidates[0].content.parts.map(function(p){ return p.text || ""; }).join(""); }catch(e){}
       var m = String(txt).match(/\{[\s\S]*\}/);
-      if(!m) throw new Error("parse");
+      if(!m){
+        var perr = new Error("parse");
+        try{ perr.detail = "finishReason: "+data.candidates[0].finishReason; }catch(e2){}
+        throw perr;
+      }
       var parsed = JSON.parse(m[0]);
       if(!parsed || !Array.isArray(parsed.items)) throw new Error("parse");
       return parsed;
@@ -1326,12 +1341,14 @@
   function handleAIFailure(err, key, text, attachPhoto){
     var ts = Date.now();
     var msg;
-    if(err && (err.status === 401 || err.status === 403 || err.status === 400)) msg = "מפתח ה-API לא תקין או נדחה ❌ בדקו אותו בהגדרות (גלגל השיניים למעלה).";
-    else if(err && err.status === 429) msg = "הגעתם למכסת הבקשות של הספק — נסו שוב עוד רגע (במסלול החינמי של Gemini יש מגבלה לדקה).";
-    else if(err && err.status >= 500) msg = "השרת של Claude עמוס כרגע — נסו שוב עוד רגע.";
+    if(err && (err.status === 401 || err.status === 403 || err.status === 400)) msg = "מפתח ה-API לא תקין או נדחה ❌ בדקו בהגדרות שהמפתח נכון ושהספק הנבחר תואם לו (Gemini למפתח מגוגל, Claude למפתח sk-ant).";
+    else if(err && err.status === 429) msg = "הגעתם למכסת הבקשות של הספק — חכו דקה ונסו שוב (במסלול החינמי של Gemini יש מגבלת בקשות לדקה וליום).";
+    else if(err && err.status >= 500) msg = "השרת של ספק ה-AI עמוס כרגע — נסו שוב עוד רגע.";
     else if(err && err.message === "refusal") msg = "ה-AI סירב לנתח את הבקשה הזו. נסו לנסח אחרת.";
+    else if(err && err.message === "blocked") msg = "הבקשה נחסמה על ידי מסנני הבטיחות של Gemini. נסו תמונה או ניסוח אחרים.";
     else if(err instanceof TypeError) msg = "אין גישת רשת ל-AI מהדף הזה 🌐 (בגרסה שרצה בקישור של Claude הרשת חסומה — צריך לפתוח את האפליקציה מכתובת האתר שלכם). עוברת למצב לא מקוון:";
     else msg = "משהו השתבש בזיהוי החכם — עוברת למצב לא מקוון:";
+    if(err && err.detail) msg += " (פרטים טכניים: "+String(err.detail).slice(0,160)+")";
     pushMsg(key, { k:"b", t:msg, ts:ts });
     saveState();
 
