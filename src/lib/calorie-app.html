@@ -956,9 +956,11 @@
 
   function aiEnabled(){ return !!(S.apiKey && S.apiKey.trim()); }
 
-  /* Google keys start with "AIza", Anthropic keys with "sk-ant" — auto-detect provider */
+  /* Anthropic keys reliably start with "sk-ant-"; Google's key format has varied
+     over time (older keys start "AIza", newer ones don't), so anything that
+     isn't an Anthropic key is treated as a Google key. */
   var GEMINI_MODEL = "gemini-2.5-flash";
-  function providerOf(){ return /^AIza/.test((S.apiKey||"").trim()) ? "gemini" : "anthropic"; }
+  function providerOf(){ return /^sk-ant-/.test((S.apiKey||"").trim()) ? "anthropic" : "gemini"; }
 
   function analyzeWithGemini(text, photoDataUrl){
     var parts = [];
