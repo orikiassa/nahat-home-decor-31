@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as FaqRouteImport } from './routes/faq'
+import { Route as CaloriesRouteImport } from './routes/calories'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsProductIdRouteImport } from './routes/products.$productId'
@@ -18,6 +19,11 @@ import { Route as ProductHandleRouteImport } from './routes/product.$handle'
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaloriesRoute = CaloriesRouteImport.update({
+  id: '/calories',
+  path: '/calories',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -44,6 +50,7 @@ const ProductHandleRoute = ProductHandleRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/calories': typeof CaloriesRoute
   '/faq': typeof FaqRoute
   '/product/$handle': typeof ProductHandleRoute
   '/products/$productId': typeof ProductsProductIdRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/calories': typeof CaloriesRoute
   '/faq': typeof FaqRoute
   '/product/$handle': typeof ProductHandleRoute
   '/products/$productId': typeof ProductsProductIdRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/calories': typeof CaloriesRoute
   '/faq': typeof FaqRoute
   '/product/$handle': typeof ProductHandleRoute
   '/products/$productId': typeof ProductsProductIdRoute
@@ -68,15 +77,23 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/calories'
     | '/faq'
     | '/product/$handle'
     | '/products/$productId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/faq' | '/product/$handle' | '/products/$productId'
+  to:
+    | '/'
+    | '/about'
+    | '/calories'
+    | '/faq'
+    | '/product/$handle'
+    | '/products/$productId'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/calories'
     | '/faq'
     | '/product/$handle'
     | '/products/$productId'
@@ -85,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  CaloriesRoute: typeof CaloriesRoute
   FaqRoute: typeof FaqRoute
   ProductHandleRoute: typeof ProductHandleRoute
   ProductsProductIdRoute: typeof ProductsProductIdRoute
@@ -97,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/faq'
       fullPath: '/faq'
       preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calories': {
+      id: '/calories'
+      path: '/calories'
+      fullPath: '/calories'
+      preLoaderRoute: typeof CaloriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -133,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  CaloriesRoute: CaloriesRoute,
   FaqRoute: FaqRoute,
   ProductHandleRoute: ProductHandleRoute,
   ProductsProductIdRoute: ProductsProductIdRoute,
@@ -140,3 +166,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
