@@ -525,6 +525,7 @@
           <label for="apiKeyInput">מפתח API</label>
           <input type="text" class="key-input" id="apiKeyInput" placeholder="הדביקו כאן את המפתח" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
           <span class="ai-status" id="aiStatus"></span>
+          <button type="button" id="testAiBtn" style="padding:10px; border-radius:11px; background:var(--track); font-weight:700; font-size:13px; color:var(--ink);">🔬 בדיקת חיבור ל-AI</button>
         </div>
       </div>
       <div class="tip" style="margin-top:10px;">
@@ -1376,7 +1377,7 @@
     else if(err && err.status >= 500) msg = "השרת של ספק ה-AI עמוס כרגע — נסו שוב עוד רגע.";
     else if(err && err.message === "refusal") msg = "ה-AI סירב לנתח את הבקשה הזו. נסו לנסח אחרת.";
     else if(err && err.message === "blocked") msg = "הבקשה נחסמה על ידי מסנני הבטיחות של Gemini. נסו תמונה או ניסוח אחרים.";
-    else if(err instanceof TypeError) msg = "אין גישת רשת ל-AI מהדף הזה 🌐 (בגרסה שרצה בקישור של Claude הרשת חסומה — צריך לפתוח את האפליקציה מכתובת האתר שלכם). עוברת למצב לא מקוון:";
+    else if(err instanceof TypeError) msg = "לא הצלחתי לצאת לאינטרנט מהדף הזה 🌐 — זה קורה כשהאפליקציה לא נפתחה מכתובת האתר עצמה (למשל נפתחה כקובץ מ״קבצים״, או בתוך Claude), או כשיש חוסם תוכן. פתחו את orikiassa.github.io/calical בספארי. [הדף הזה רץ מ: "+(location.origin || location.protocol)+"] עוברת למצב לא מקוון:";
     else msg = "משהו השתבש בזיהוי החכם — עוברת למצב לא מקוון:";
     if(err && err.detail) msg += " (פרטים טכניים: "+String(err.detail).slice(0,160)+")";
     pushMsg(key, { k:"b", t:msg, ts:ts });
@@ -1874,6 +1875,23 @@
       if(/^sk-ant/i.test(S.apiKey)) S.provider = "anthropic";
       else if(/^AIza/.test(S.apiKey)) S.provider = "gemini";
       saveState(); syncProviderSeg(); updateAiStatus();
+    });
+  });
+
+  /* one tiny real request; shows exactly why AI works or fails on THIS device */
+  document.getElementById("testAiBtn").addEventListener("click", function(){
+    var btn = this;
+    function done(t){ btn.textContent = t; setTimeout(function(){ btn.textContent = "🔬 בדיקת חיבור ל-AI"; }, 12000); }
+    if(!aiEnabled()){ done("❌ אין מפתח — הדביקו מפתח למעלה קודם"); return; }
+    btn.textContent = "בודק...";
+    analyzeWithAI("תפוח", null).then(function(r){
+      var name = (r.items && r.items[0] && r.items[0].name) || "תקין";
+      done("✅ עובד מצוין! זוהה: "+name+(providerOf()==="gemini" && S.geminiModel ? " · "+S.geminiModel : ""));
+    }).catch(function(err){
+      var d;
+      if(err instanceof TypeError) d = "אין יציאה לרשת מהדף הזה (רץ מ: "+(location.origin||location.protocol)+") — פתחו מהאתר בספארי";
+      else d = (err && err.status ? "HTTP "+err.status+": " : "") + String((err && (err.detail || err.message)) || err);
+      done("❌ "+String(d).slice(0,140));
     });
   });
 
