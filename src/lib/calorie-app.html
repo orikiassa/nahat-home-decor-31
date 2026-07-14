@@ -1228,9 +1228,11 @@
     var lastErr = null;
     function modelUnavailable(err){
       if(!err) return false;
-      if(err.status === 404) return true;
+      /* 404: model gone for this key; 503: model overloaded ("high demand");
+         429: this model's free-tier quota exhausted — another model may be free */
+      if(err.status === 404 || err.status === 503 || err.status === 429) return true;
       var d = String(err.detail || "");
-      return /no longer available|not found|not supported|unknown name|invalid.*thinking/i.test(d);
+      return /no longer available|not found|not supported|unknown name|invalid.*thinking|high demand|overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(d);
     }
     function tryAuth(ai){
       if(ai >= authModes.length) return Promise.reject(lastErr || new Error("parse"));
