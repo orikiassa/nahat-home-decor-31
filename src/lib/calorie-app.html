@@ -1909,6 +1909,14 @@
       var name = (r.items && r.items[0] && r.items[0].name) || "תקין";
       done("✅ עובד מצוין! זוהה: "+name+(providerOf()==="gemini" && S.geminiModel ? " · "+S.geminiModel : ""));
     }).catch(function(err){
+      if(err instanceof TypeError && providerOf() === "gemini"){
+        /* a plain GET is a "simple" request (no CORS preflight) — it separates
+           "the whole Google AI domain is blocked on this device" from other failures */
+        fetch("https://generativelanguage.googleapis.com/v1beta/models?key="+encodeURIComponent(S.apiKey.trim()), { method:"GET" })
+          .then(function(r){ done("❌ יש גישה לשרת אבל הבקשה נחסמת בדרך (קוד "+r.status+") — כנראה חוסם תוכן/VPN שמפריע. נסו לכבות אותם זמנית"); })
+          .catch(function(){ done("❌ הדומיין של Google AI חסום במכשיר הזה — בדקו חוסם פרסומות בספארי, אפליקציית VPN/AdGuard, DNS פרטי, או הגבלות זמן מסך"); });
+        return;
+      }
       var d;
       if(err instanceof TypeError) d = "אין יציאה לרשת מהדף הזה (רץ מ: "+(location.origin||location.protocol)+") — פתחו מהאתר בספארי";
       else d = (err && err.status ? "HTTP "+err.status+": " : "") + String((err && (err.detail || err.message)) || err);
