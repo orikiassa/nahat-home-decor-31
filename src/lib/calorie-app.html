@@ -305,8 +305,8 @@
   .saved-emoji{ width:46px; height:46px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center;
     font-size:22px; background:var(--field-bg); border:1px solid var(--field-border); }
   .saved-info{ flex:1 1 auto; min-width:0; }
-  .saved-name{ font-family:var(--font-display); font-size:17.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .saved-sub{ font-size:13px; color:var(--ink-2); margin-top:2px; }
+  .saved-name{ font-family:var(--font-display); font-size:19.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .saved-sub{ font-size:14.5px; color:var(--ink-2); margin-top:2px; }
   .saved-edit{ width:32px; height:32px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:var(--ink-3); }
   .saved-empty{ text-align:center; padding:30px 20px; color:var(--ink-3); font-size:13.5px; }
   .saved-edit-row{ padding:14px 10px; margin:4px 0; border-radius:16px; background:var(--field-bg); border:1px solid var(--field-border); }
@@ -577,6 +577,7 @@
     ["בירה","כוס",150,2,13,0,"🍺",["בירה"]],
     ["יין","כוס",125,0,4,0,"🍷",["יין","כוס יין"]],
     ["שייק פירות","כוס",220,4,45,2,"🥤",["שייק","סמוזי","שייק פירות"]],
+    ["שייק חלבון","כוס",180,30,8,3,"🥤",["שייק חלבון","משקה חלבון","שייק פרוטאין","אבקת חלבון","פרוטאין שייק"]],
     ["לימונדה","כוס",100,0,26,0,"🍋",["לימונדה"]],
 
     ["קרואסון שקדים","יחידה",410,8,42,24,"🥐",["קרואסון שקדים"]],
@@ -728,6 +729,34 @@
   });
   ALIAS_INDEX.sort(function(a,b){ return b.alias.length - a.alias.length; });
 
+  /* best-effort emoji for a free-typed food name: reuse the DB match if one
+     exists, otherwise fall back to broad keyword categories */
+  var EMOJI_KEYWORDS = [
+    [/שייק|משקה חלבונ|פרוטאינ|פרוטינ|אבקת חלבונ/, "🥤"],
+    [/קפה|אספרסו|קפוצ/, "☕"], [/תה|מאצ/, "🍵"],
+    [/עופ|שניצל/, "🍗"], [/בשר|סטייק|אנטריקוט|קבב|המבורגר|בורגר/, "🥩"],
+    [/דג|סלמונ|טונה|דניס|לברק/, "🐟"], [/ביצ/, "🥚"], [/גבינ/, "🧀"], [/יוגורט|קוטג/, "🥛"],
+    [/לחם|פיתה|בגט|לחמני|בייגל/, "🍞"], [/אורז|פסטה|קוסקוס|פתיתימ|קינואה/, "🍚"],
+    [/ירק|סלט|מלפפ|עגבני|חסה|כרוב|גזר/, "🥗"],
+    [/פרי|תפוח|בננ|ענב|תות|מנגו|אבטיח|מלונ/, "🍎"],
+    [/עוג|קינוח|בראוני/, "🍰"], [/שוקולד/, "🍫"], [/גלידה|ארטיק/, "🍨"],
+    [/פיצה/, "🍕"], [/מרק/, "🍲"], [/אגוז|שקד|בוטנ/, "🥜"]
+  ];
+  function guessEmoji(name){
+    var n = norm(name);
+    if(!n) return "🍽️";
+    for(var i=0;i<ALIAS_INDEX.length;i++){
+      if(n.indexOf(ALIAS_INDEX[i].alias) !== -1) return FOOD_DB[ALIAS_INDEX[i].idx][6];
+    }
+    for(var j=0;j<EMOJI_KEYWORDS.length;j++){
+      if(EMOJI_KEYWORDS[j][0].test(n)) return EMOJI_KEYWORDS[j][1];
+    }
+    return "🍽️";
+  }
+  function smartEmoji(name, currentEmoji){
+    return (currentEmoji && currentEmoji !== "🍽️") ? currentEmoji : guessEmoji(name);
+  }
+
   var NUM_WORDS = {
     "חצי":0.5,"רבע":0.25,"שליש":0.34,
     "אחד":1,"אחת":1,"שני":2,"שתי":2,"שניימ":2,"שתיימ":2,"זוג":2,
@@ -862,7 +891,10 @@
         profile:Object.assign({}, DEFAULT_PROFILE, p.profile||{}),
         goals:goals,
         trainingDays:p.trainingDays||{},
-        savedFoods:p.savedFoods||[],
+        savedFoods:(p.savedFoods||[]).map(function(f){
+          if(!f.photo && (!f.emoji || f.emoji === "🍽️")) return Object.assign({}, f, { emoji:guessEmoji(f.name) });
+          return f;
+        }),
         entries:p.entries||{},
         chats:p.chats||{},
         custom:p.custom||{}
@@ -1645,7 +1677,7 @@
       name:name, unit:"מנה",
       kcal:Math.round(editCtx.baseKcal), protein:Math.round(editCtx.baseP),
       carbs:Math.round(editCtx.baseC), fat:Math.round(editCtx.baseF),
-      emoji:editCtx.emoji||"🍽️", photo:editCtx.photo||null
+      emoji:smartEmoji(name, editCtx.emoji), photo:editCtx.photo||null
     });
     saveState();
     var btn = this;
@@ -1817,7 +1849,7 @@
         protein:Math.max(0,Number(pInput.value)||0),
         carbs:Math.max(0,Number(cInput.value)||0),
         fat:Math.max(0,Number(fInput.value)||0),
-        emoji:(item && item.emoji) || "🍽️",
+        emoji:smartEmoji(name, item && item.emoji),
         photo:(item && item.photo) || null
       };
       if(item){
