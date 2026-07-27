@@ -1310,9 +1310,20 @@
   }
 
   function analyzeWithAI(text, photoDataUrl){
-    return providerOf() === "gemini"
-      ? analyzeWithGemini(text, photoDataUrl)
-      : analyzeWithClaudeApi(text, photoDataUrl);
+    function run(){
+      return providerOf() === "gemini"
+        ? analyzeWithGemini(text, photoDataUrl)
+        : analyzeWithClaudeApi(text, photoDataUrl);
+    }
+    /* TypeError = the fetch never reached a server (DNS/connectivity blip, flaky
+       mobile network). One short retry avoids a false "blocked" report on a
+       one-off drop; a genuinely blocked domain will just fail again. */
+    return run().catch(function(err){
+      if(err instanceof TypeError){
+        return new Promise(function(resolve){ setTimeout(resolve, 1200); }).then(run);
+      }
+      throw err;
+    });
   }
 
   function analyzeWithClaudeApi(text, photoDataUrl){
@@ -1432,7 +1443,15 @@
     else if(err && err.status >= 500) msg = "השרת של ספק ה-AI עמוס כרגע — נסו שוב עוד רגע.";
     else if(err && err.message === "refusal") msg = "ה-AI סירב לנתח את הבקשה הזו. נסו לנסח אחרת.";
     else if(err && err.message === "blocked") msg = "הבקשה נחסמה על ידי מסנני הבטיחות של Gemini. נסו תמונה או ניסוח אחרים.";
-    else if(err instanceof TypeError) msg = "לא הצלחתי לצאת לאינטרנט מהדף הזה 🌐 — זה קורה כשהאפליקציה לא נפתחה מכתובת האתר עצמה (למשל נפתחה כקובץ מ״קבצים״, או בתוך Claude), או כשיש חוסם תוכן. פתחו את orikiassa.github.io/calical בספארי. [הדף הזה רץ מ: "+(location.origin || location.protocol)+"] עוברת למצב לא מקוון:";
+    else if(err instanceof TypeError){
+      var runsFromRealSite = /^https?:$/i.test(location.protocol);
+      if(!runsFromRealSite){
+        msg = "לא הצלחתי לצאת לאינטרנט מהדף הזה 🌐 — זה קורה כשהאפליקציה לא נפתחה מכתובת האתר עצמה (למשל נפתחה כקובץ מ״קבצים״, או בתוך Claude). פתחו את orikiassa.github.io/calical בספארי. [הדף הזה רץ מ: "+(location.origin || location.protocol)+"] עוברת למצב לא מקוון:";
+      } else {
+        var otherProvider = providerOf() === "gemini" ? "Claude" : "Gemini";
+        msg = "🌐 המכשיר הזה חוסם את הגישה לשרת ה-AI — כנראה חוסם פרסומות, אפליקציית VPN/DNS פרטי (למשל NextDNS, AdGuard), iCloud Private Relay, או הגבלת זמן מסך. נסו לכבות אחד מאלה זמנית ולשלוח שוב, או להחליף בהגדרות לספק "+otherProvider+" (הוא נמצא בכתובת שרת שונה ולפעמים רק אחד מהם חסום). עוברת למצב לא מקוון בינתיים:";
+      }
+    }
     else msg = "משהו השתבש בזיהוי החכם — עוברת למצב לא מקוון:";
     if(err && err.detail) msg += " (פרטים טכניים: "+String(err.detail).slice(0,160)+")";
     pushMsg(key, { k:"b", t:msg, ts:ts });
